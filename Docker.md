@@ -128,6 +128,6 @@ show slave status\G;如下图红线为Yes为开启了；
 需要设置my.cnf 文件的权限，使用命令chmod 644 my.cnf更改权限，重启容器即可。
 ```
 
-![image-20230627204114595](Docker.assets/image-20230627204114595.png)
+![image-20230627211346191](Docker.assets/image-20230627211346191.png)
 
- ![image-20230627205051405](Docker.assets/image-20230627205051405.png)
+![image-20230627211704221](Docker.assets/image-20230627211704221.png)
