@@ -131,3 +131,68 @@ show slave status\G;如下图红线为Yes为开启了；
 ![image-20230627211346191](Docker.assets/image-20230627211346191.png)
 
 ![image-20230627211704221](Docker.assets/image-20230627211704221.png)
+
+#### Docker 安装redis集群（3主3从redis集群）
+
+```
+方法：哈希取余分区（算法），一致性哈希算法分区，哈希槽分区（一个集群有16384个槽）
+启动6台redis容器
+1:
+docker run -d --name redis-node-1 --net host --privileged=true
+-v /data/redis/share/redis-node-1:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6381
+2:
+docker run -d --name redis-node-2 --net host --privileged=true
+-v /data/redis/share/redis-node-2:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6382
+3:
+docker run -d --name redis-node-3 --net host --privileged=true
+-v /data/redis/share/redis-node-3:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6383
+4:
+docker run -d --name redis-node-4 --net host --privileged=true
+-v /data/redis/share/redis-node-4:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6384
+5:
+docker run -d --name redis-node-5 --net host --privileged=true
+-v /data/redis/share/redis-node-5:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6385
+6:
+docker run -d --name redis-node-6 --net host --privileged=true
+-v /data/redis/share/redis-node-6:/data redis:6.0.8
+--cluster-enabled yes --appendonly yes --port 6386
+进入容器1，执行命令构建主从关系
+redis-cli --cluster create 192.168.2.252:6381 192.168.2.252:6382 192.168.2.252:6383 192.168.2.252:6384 192.168.2.252:6385 192.168.2.252:6386 --cluster-replicas 1
+查看集群状态
+redis-cli -p 6381
+cluster info
+集群检查
+redis-cli --cluster check 192.168.2.252:6381
+```
+
+```
+Redis集群扩容
+新建6387和6388两个容器，并启动
+进入6387容器内部，将新增的6387作为master节点加入集群
+redis-cli --cluster add-node 192.168.2.252:6387 192.168.2.252:6381
+检查集群情况（是否能查到6387）
+redis-cli --cluster check 192.168.2.252:6381
+重新分配槽号(由前几个容器匀出来给到新的容器)
+redis-cli --cluster reshard 192.168.2.252:6381
+为主节点6387分配从节点6388
+redis-cli --cluster add-node 192.168.2.252:6388 192.168.2.252:6387
+--cluster-slave --cluster-master-id (复制6387的容器ID)
+```
+
+```
+Redis集群缩容
+先将从节点6388清除
+redis-cli --cluster del-node 192.168.2.252:6388 (填写6388容器ID)
+将6387的槽号清空
+redis-cli --cluster reshard 192.168.2.252:6381 (运行后将6387的槽号指定给哪个容器，填写容器ID)
+集群检查，查看是否成功
+redis-cli --cluster check 192.168.2.252:6381
+将6387容器节点删除
+redis-cli --cluster del-node 192.168.2.252:6387 (填写6387容器ID)
+```
+
