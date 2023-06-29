@@ -20,6 +20,14 @@ docker search 镜像名称
 docker pull 镜像名称（可以指定镜像版本，不指定版本默认最新）
 #删除镜像
 docker rmi 镜像名称
+#创建镜像
+docker build -t 镜像的名字及标签，通常 name:tag 或者 name 格式；
+#镜像中存在<none><none>的镜像,分为有效None和无效None
+#删除无效None镜像
+# 查看是否有无效的 none 镜像
+docker images -f "dangling=true"
+# 如果有的话就执行以下删除命令
+docker rmi $(docker images -f "dangling=true" -q)
 ```
 
 #### Docker 容器操作

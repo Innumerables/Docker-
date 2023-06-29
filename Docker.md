@@ -1,3 +1,19 @@
+#### Docker镜像（NONE)
+
+```
+Docker 镜像中的有效none镜像 和无效none镜像
+有效的 none 镜像：当一个镜像被其他镜像所依赖时，即使它没有标签（tag），它仍然被视为有效的 none 镜像。这通常发生在多阶段构建中，其中一个构建阶段生成的镜像在后续的构建阶段中被使用。
+无效的 none 镜像：当一个镜像既没有标签（tag），也没有其他镜像依赖它时，它被视为无效的 none 镜像。这种镜像通常是由于删除了它的标签或其他相关的镜像导致的。
+
+无效的 none 镜像在镜像列表中以 "<none>" 来标记。这些镜像占据了磁盘空间，但通常没有实际用途，因此建议将其清理掉。
+# 查看是否有无效的 none 镜像
+docker images -f "dangling=true"
+# 如果有的话就执行以下删除命令
+docker rmi $(docker images -f "dangling=true" -q)
+```
+
+
+
 #### Docker 安装软件步骤
 
 搜索镜像，拉取镜像，查看镜像，启动镜像，停止容器，移除容器 
@@ -219,5 +235,72 @@ redis-cli --cluster del-node 192.168.2.252:6387 (填写6387容器ID)
 哈希槽分区：一个 Redis Cluster包含16384（0~16383）个哈希槽，存储在Redis Cluster中的所有键都会被映射到这些slot中，集群中的每个键都属于这16384个哈希槽中的一个。按照槽来进行分片，通过为每个节点指派不同数量的槽，可以控制不同节点负责的数据量和请求数.
 	集群使用公式slot=CRC16（key）/16384来计算key属于哪个槽，其中CRC16(key)语句用于计算key的CRC16 校验和。
 优势：很容易添加或者删除节点：比如如果我想新添加个节点D, 我需要从节点 A, B, C中转移部分槽到D上即可.如果我像移除节点A,需要将A中得槽移到B和C节点上,然后将没有任何槽的A节点从集群中移除即可.
+```
+
+#### DockerFile 
+
+```
+DOkcerFile 是用来构建Docker镜像的文本文件，是由一条条构建镜像所需的指令和参数构成的脚本。
+构建三步骤：编写dockerfile文件，docker build命令构建镜像，docker run依镜像运行实例。
+```
+
+```
+DockerFile 常用保留字指令
+FROM:指定基础镜像，用于构建当前镜像的基础环境。
+MAINTAINER:指定镜像维护者的信息。
+RUN:在镜像构建过程中执行命令。可以用于安装依赖、配置环境等操作。
+EXPOSE:声明容器运行时需要监听的端口号。
+WORKDIR:设置容器中的工作目录。
+USER:指定运行镜像时的用户名或UID。
+ENV:设置环境变量。
+ADD:将本地文件或目录复制到镜像中。它还可以将远程URL下载并添加到镜像中。
+COPY:将本地文件或目录复制到镜像中。
+VOLUME:声明持久化存储的挂载点，用于在容器和主机之间共享数据。
+CMD:设置容器启动后默认执行的命令，可以被Dockerfile中的ENTRYPOINT指令覆盖。
+ENTRYPOINT:设置容器启动后默认执行的命令，可以与Dockerfile中的CMD指令结合使用。它的参数可以通过docker run命令传递。
+```
+
+```
+DockerFile gin-vue-admin的DockFile 文件详解
+
+#使用golang:alpine作为构建阶段的基础镜像，命名为builder。Alpine是一个轻量级的Linux发行版，golang:alpine镜像包含了Go语言的开发环境。
+FROM golang:alpine as builder
+
+#将工作目录设置为/go/src/github.com/flipped-aurora/gin-vue-admin/server，即Go项目的根目录。
+WORKDIR /go/src/github.com/flipped-aurora/gin-vue-admin/server
+
+#将当前目录下的所有文件复制到容器的工作目录中。这将包括Go项目的所有源代码文件、配置文件等。
+COPY . .
+
+#在构建阶段执行的一系列命令。这些命令用于配置Go的环境变量（设置Go模块、设置代理等）、整理依赖（go mod tidy）以及构建Go项目（go #build -o server）。最终会生成一个名为server的可执行文件。
+RUN go env -w GO111MODULE=on \
+    && go env -w GOPROXY=https://goproxy.cn,direct \
+    && go env -w CGO_ENABLED=0 \
+    && go env \
+    && go mod tidy \
+    && go build -o server .
+
+#使用alpine:latest作为运行阶段的基础镜像。同样，Alpine是一个轻量级的Linux发行版。
+FROM alpine:latest
+
+#设置一个用于标识镜像维护者的标签。
+LABEL MAINTAINER="SliverHorn@sliver_horn@qq.com"
+
+#将工作目录设置为/go/src/github.com/flipped-aurora/gin-vue-admin/server，与构建阶段保持一致。
+WORKDIR /go/src/github.com/flipped-aurora/gin-vue-admin/server
+
+#从构建阶段的builder镜像中复制文件到当前目录。--from=0 参数，从前边的阶段中拷贝文件到当前阶段中，多个FROM语句时，0代表第一个阶段。
+COPY --from=0 /go/src/github.com/flipped-aurora/gin-vue-admin/server/server ./
+COPY --from=0 /go/src/github.com/flipped-aurora/gin-vue-admin/server/resource ./resource/
+COPY --from=0 /go/src/github.com/flipped-aurora/gin-vue-admin/server/config.docker.yaml ./
+
+#声明容器将会监听的端口号，这里设置为8888。
+EXPOSE 8888
+#设置容器启动时的默认入口点，最终生成两个镜像，以第二个为运行容器。
+ENTRYPOINT ./server -c config.docker.yaml
+
+此DockerFile中使用两个FROM：
+	第一个FROM指令使用golang:alpine作为基础镜像，并构建一个包含Go应用可执行文件的镜像，命名为builder。这是构建阶段。
+	第二个FROM指令使用alpine:latest作为基础镜像，并从前一个构建阶段的builder镜像中复制生成的Go应用可执行文件和其他相关文件。这是运行阶段。
 ```
 
