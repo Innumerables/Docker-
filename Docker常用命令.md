@@ -7,6 +7,8 @@ service docker start
 service docker stop
 #重启docker
 service docker restart
+#查看所有容器的的cpu,内存以及网络流量的等数据(实时的)
+docker stats
 ```
 
 #### Docker 镜像操作
@@ -85,5 +87,31 @@ MYSQL_ROOT_PASSWORD=my-secret-pw -d mysql:tag
 #数据卷挂载，容器与创建的数据卷进行挂载
 docker volume create myvolume
 docker run -d -v myvolume:/app/data myapp
+```
+
+#### Docker Network 操作
+
+```\
+#列出网络
+docker network ls
+#创建网络
+docker network create aaa_network
+#删除网络
+docker network rm aaa_network
+#查看网络数据源
+docker network inspect bridge
+```
+
+#### Docker Compose
+
+```
+#启动应用程序
+docker-compose up
+#查看容器的状态
+docker-compose ps
+#停止容器
+docker-compose stop
+#重启容器
+docker-compose restart
 ```
 

@@ -304,3 +304,50 @@ ENTRYPOINT ./server -c config.docker.yaml
 	第二个FROM指令使用alpine:latest作为基础镜像，并从前一个构建阶段的builder镜像中复制生成的Go应用可执行文件和其他相关文件。这是运行阶段。
 ```
 
+#### Docker Network
+
+```
+常用的三种网络模式：host，bride,none
+能做什么：
+	容器间的的互联和通信以及端口映射，
+	容器IP变动时候可以通过服务名直接网络通信而不受影响
+网络模式：
+	bridge：个容器都会被分配一个独立的网络命名空间，并且 Docker 会创建一个名为 "docker0" 的虚拟网桥。容器之间可以通过这个虚	拟网桥相互通信，同时也可以通过主机网络接口访问外部网络。这是默认的网络模式。
+	host:在主机模式下，容器与主机共享网络命名空间，即容器使用主机的网络堆栈，不进行网络隔离。这样容器就可以直接使用主机的网络接	口，使得容器的网络性能更高，但也失去了容器间的网络隔离。
+	none:容器不会分配任何网络资源，即容器没有网络接口，无法与外部网络通信。通常用于特定安全要求或只需本地访问的场景。
+	container:容器模式允许多个容器共享同一个网络命名空间，这意味着这些容器可以像是在同一主机上运行一样直接通信，共享同一个 IP 	地址。容器模式适用于需要将多个容器组合在一起形成一个整体应用的场景。
+	自定义网络：用户可以自行创建和配置这些网络。自定义网络可以用于实现更复杂的容器通信和网络隔离需求，同时也能帮助提供更灵活的网络		设置。
+	
+	
+自定义网络例子：
+	docker network create my_network
+	docker run -d --name container1 --network my_network -p 8080:80 nginx
+	docker run -d --name container2 --network my_network -p 8081:80 nginx
+```
+
+#### Docker Compose容器编排
+
+```
+Docker Compose是一个用于定义和运行多个Docker容器的工具。它使用YAML文件来配置应用程序的服务、网络和卷等方面，并使用简单的命令进行容器编排。
+Docker-compose 一文件:docker-compose.yml，两要素：服务和工程
+创建Compose文件：在项目的根目录下创建一个名为docker-compose.yml的文件。这个文件将包含您应用程序的各个服务的配置信息。您可以在该文件中定义多个服务，每个服务代表一个容器。
+定义服务：在Compose文件中，您可以定义每个服务的配置。这些配置包括镜像、环境变量、端口映射、卷挂载等。
+
+示例文件：
+    version: '3'
+    services:
+      web:
+        image: nginx:latest
+        ports:
+          - 8080:80
+        volumes:
+          - ./app:/usr/share/nginx/html
+        depends_on:
+          - db
+      db:
+        image: mysql:5.7
+        environment:
+          - MYSQL_ROOT_PASSWORD=secret
+          - MYSQL_DATABASE=myapp
+```
+
